@@ -1,0 +1,2 @@
+filename,threshold,iou_threshold,ground_truth_instances,predicted_instances,TP,FP,FN,precision,recall,F1,count_error
+100.0_1.0.png,0.77,0.5,18,20,18,2,0,0.9,1.0,0.9473684210526316,2

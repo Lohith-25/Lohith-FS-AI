@@ -1,0 +1,9 @@
+sampleid,filename,coco_image_id,width,height,annotation_count,has_solar,split,dataset_type
+572,572.0_1.0.png,526,640,640,0,1,excluded,zero_annotation
+1039,1039.0_1.0.png,667,640,640,0,1,excluded,zero_annotation
+658,658.0_1.0.png,911,640,640,0,1,excluded,zero_annotation
+1793,1793.0_1.0.png,1793,640,640,0,1,excluded,zero_annotation
+1794,1794.0_1.0.png,1794,640,640,0,1,excluded,zero_annotation
+2180,2180.0_1.0.png,2180,640,640,0,1,excluded,zero_annotation
+2265,2265.0_1.0.png,2265,640,640,0,1,excluded,zero_annotation
+2371,2371.0_1.0.png,2371,640,640,0,1,excluded,zero_annotation

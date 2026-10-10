@@ -1,0 +1,13 @@
+SOLARMAP PILOT VERIFIER SUMMARY
+============================================================
+
+Rows used: 57
+Cross-validation folds: 5
+
+MODEL RESULTS
+             model  accuracy  balanced_accuracy  macro_precision  macro_recall  macro_f1
+LogisticRegression  0.350877           0.335764         0.321066      0.335764  0.321883
+      RandomForest  0.228070           0.160511         0.141026      0.160511  0.147878
+
+Best model: LogisticRegression
+Best Macro F1: 0.3219

@@ -1,0 +1,10 @@
+                            precision    recall  f1-score   support
+
+                 DUPLICATE       0.08      0.10      0.09        10
+         OVER_SEGMENTATION       0.38      0.56      0.45         9
+POSSIBLE_UNANNOTATED_PANEL       0.27      0.19      0.22        16
+           TRUE_BACKGROUND       0.55      0.50      0.52        22
+
+                  accuracy                           0.35        57
+                 macro avg       0.32      0.34      0.32        57
+              weighted avg       0.36      0.35      0.35        57

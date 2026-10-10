@@ -1,0 +1,12 @@
+{
+  "baseline_checkpoint": "C:\\SolarMap-India\\checkpoints\\maskrcnn_baseline_epoch_10.pth",
+  "source_split": "C:\\SolarMap-India\\splits\\negative_train.csv",
+  "source_image_count": 300,
+  "hard_negative_threshold": 0.75,
+  "hard_negative_image_count": 54,
+  "hard_negative_rate_percent": 18.0,
+  "high_confidence_prediction_count": 136,
+  "mean_high_confidence_predictions_per_image": 0.4533333333333333,
+  "test_set_used": false,
+  "locked_test_protected": true
+}

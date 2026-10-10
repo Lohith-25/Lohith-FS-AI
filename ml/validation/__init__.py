@@ -1,0 +1,3 @@
+"""
+SolarMap-India — Validation Subpackage.
+"""

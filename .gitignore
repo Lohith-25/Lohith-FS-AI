@@ -1,0 +1,99 @@
+# ============================================================
+# SolarMap-India — .gitignore
+# ============================================================
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/*
+
+# Testing & Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Environment & local settings / secrets
+.env
+.env.*
+*.key
+*.pem
+*.cert
+!.env.example
+
+# Datasets (never upload raw satellite imagery or external datasets)
+dataset/
+external_datasets/
+*.zip
+*.tar
+*.tar.gz
+*.7z
+
+# Model weights and checkpoints (never upload large binary checkpoints)
+checkpoints/
+*.pth
+*.pt
+*.ckpt
+*.joblib
+*.onnx
+**/models/*.pth
+**/models/*.pt
+
+# Generated inference images, masks, overlays, and runtime artifacts
+outputs/
+test_images/
+backend/uploads/
+backend/generated/
+uploads/
+generated/
+
+# Logs and temporary files
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Node / Frontend dependencies & build outputs
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+ehthumbs.db

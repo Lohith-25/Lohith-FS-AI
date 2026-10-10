@@ -1,0 +1,19 @@
+{
+  "seed": 42,
+  "positive": {
+    "train": 1993,
+    "val": 249,
+    "test": 250
+  },
+  "negative": {
+    "train": 300,
+    "val": 75,
+    "test": 94
+  },
+  "excluded": {
+    "zero_annotation": 8,
+    "positive_unannotated": 31
+  },
+  "protected_positive_test_sha256": "2d86fe7d5106bd0be744c4d72bb433a79adc9de492a34c9406c1079223666620",
+  "policy": "Train proposed model only on positive_train + negative_train. Tune on positive_val + negative_val. Evaluate after lock on positive_test + negative_test."
+}

@@ -1,0 +1,2 @@
+method,accuracy,balanced_accuracy,macro_precision,macro_recall,macro_f1,candidates_evaluated,unique_images,cv_folds
+ResNet18_visual_embedding_LogisticRegression,0.21052631578947367,0.16556186868686867,0.16854166666666665,0.16556186868686867,0.16531471631205674,57,16,4
