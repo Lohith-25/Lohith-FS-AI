@@ -1,0 +1,1 @@
+"""SolarMap-India Backend Package."""

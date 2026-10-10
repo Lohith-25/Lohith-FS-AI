@@ -184,17 +184,101 @@ print(f"Detected Solar Regions: {metrics['detected_region_count']}")
 python ml/inference/predict.py --image "path/to/aerial_image.png"
 ```
 
+### Backend REST API (FastAPI)
+
+SolarMap-India includes a production-ready asynchronous REST API for remote inference and web integration:
+
+#### 1. Start the API Server
+
+```bash
+uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+#### 2. Interactive API Documentation
+
+Once started, open in your browser:
+- **Swagger UI:** [http://localhost:8000/docs](http://localhost:8000/docs)
+- **ReDoc:** [http://localhost:8000/redoc](http://localhost:8000/redoc)
+
+#### 3. Health Check
+
+```bash
+curl http://localhost:8000/health
+```
+
+Response:
+```json
+{
+  "status": "healthy",
+  "model": "HalfUNet",
+  "checkpoint_available": true,
+  "checkpoint_path": "D:\\SolarMap-India\\outputs\\HalfUNet\\models\\halfunet_best.pth",
+  "device": "cuda",
+  "error": null
+}
+```
+
+#### 4. Submit an Aerial Image for Solar Prediction
+
+Using `curl`:
+```bash
+curl -X POST "http://localhost:8000/predict?threshold=0.5&min_component_area=20" \
+     -H "accept: application/json" \
+     -H "Content-Type: multipart/form-data" \
+     -F "file=@dataset/Solar Images/Solar Images/images/default/768.0_1.0.png"
+```
+
+Using Python (`requests`):
+```python
+import requests
+
+url = "http://localhost:8000/predict"
+with open("dataset/Solar Images/Solar Images/images/default/768.0_1.0.png", "rb") as f:
+    response = requests.post(url, files={"file": ("image.png", f, "image/png")})
+
+print(response.json())
+```
+
+Example Response:
+```json
+{
+  "success": true,
+  "model": "HalfUNet",
+  "prediction_id": "c1f7b88e-7117-4952-b8d4-53c4826b01ef",
+  "image_width": 640,
+  "image_height": 640,
+  "total_image_pixels": 409600,
+  "solar_area_pixels": 68451,
+  "solar_coverage_percent": 16.7117,
+  "detected_region_count": 43,
+  "largest_region_area_pixels": 4750,
+  "smallest_region_area_pixels": 616,
+  "mean_region_area_pixels": 1591.8837,
+  "physical_area_m2": null,
+  "physical_area_hectares": null,
+  "physical_area_status": "insufficient_data",
+  "mask_url": "/outputs/c1f7b88e-7117-4952-b8d4-53c4826b01ef/mask",
+  "overlay_url": "/outputs/c1f7b88e-7117-4952-b8d4-53c4826b01ef/overlay"
+}
+```
+
+#### 5. Retrieve Segmentation Artifacts
+
+- **Binary Mask:** `http://localhost:8000/outputs/{prediction_id}/mask`
+- **Visual Overlay:** `http://localhost:8000/outputs/{prediction_id}/overlay`
+
 ---
 
 ## 10. Automated Test Suite
 
-Run the full automated test suite (unit tests, integration tests, dimension tests, numerical safety checks):
+Run the full automated test suite (unit tests, integration tests, dimension tests, numerical safety checks, API tests):
 
 ```bash
-# Run all tests
+# Run all 108 tests
 python -m unittest discover tests
 
 # Or run specific test suites
+python -m unittest tests/test_api.py
 python -m unittest tests/test_inference.py tests/test_analytics.py
 ```
 
