@@ -37,10 +37,7 @@ SolarMap-India strictly separates 2D image pixel measurements from real-world ph
 
 1. **Solar Pixel Counting:** Integer count of all pixels classified as solar panel (`mask == 1`).
 2. **Total Pixels:** Calculated directly from native raster dimensions ($W \times H$).
-3. **Solar Coverage Percentage:** Exact ratio:
-   $$\text{Coverage (\%)} = \frac{\text{Solar Pixels}}{\text{Total Pixels}} \times 100$$
-4. **Connected Solar Region Analysis:** 8-connectivity raster component analysis isolating distinct solar clusters with configurable noise filtering ($\text{min\_component\_area} \ge 20\text{ px}$).
-5. **Physical Area Safety:** When satellite imagery lacks calibrated Ground Sampling Distance (GSD) or geospatial transform metadata, physical area estimates are not fabricated. The pipeline outputs:
+3. **Physical Area Safety:** When satellite imagery lacks calibrated Ground Sampling Distance (GSD) or geospatial transform metadata, physical area estimates are not fabricated. The pipeline outputs:
    ```json
    {
        "physical_area_m2": null,
