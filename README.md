@@ -142,17 +142,46 @@ SolarMap-India/
 
 ---
 
-## 8. Installation
+## 8. Installation & Deployment
 
-Ensure Python 3.10+ is installed:
+### Quickstart via Docker Compose (Recommended)
+
+SolarMap-India is fully containerized with a multi-stage Docker build combining the React 19 frontend and FastAPI backend into a unified service:
 
 ```bash
-# Clone the repository
+# 1. Clone the repository
 git clone https://github.com/Lohith-25/Lohith-FS-AI.git
 cd Lohith-FS-AI
 
-# Install dependencies
+# 2. Verify model artifact availability
+python scripts/verify_model_artifact.py
+
+# 3. Launch application and optional local MongoDB with Docker Compose
+docker compose up -d --build
+
+# 4. Open in browser
+# Dashboard: http://localhost:8000
+# API Docs:  http://localhost:8000/docs
+```
+
+For complete deployment options, MongoDB Atlas configuration, and container hardening, see [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
+
+### Local Python & Node.js Installation
+
+Ensure Python 3.10+ and Node.js 18+ are installed:
+
+```bash
+# Install backend dependencies
 pip install -r requirements.txt
+
+# Verify model checkpoint
+python scripts/verify_model_artifact.py
+
+# Install frontend dependencies and build assets
+cd frontend
+npm install
+npm run build
+cd ..
 ```
 
 ---

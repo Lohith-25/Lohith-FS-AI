@@ -33,12 +33,17 @@ from ml.inference.postprocessing import (
     mask_to_visual_image,
     process_logits,
     resize_mask_to_original,
+    resize_probability_map_to_original,
+    unpad_and_restore_mask,
+    unpad_and_restore_probability_map,
 )
 from ml.inference.preprocessing import (
     MODEL_INPUT_SIZE,
     load_and_validate_image,
     preprocess_image,
+    preprocess_image_letterbox,
 )
+from ml.inference.tiling import TilingConfig, predict_tiled
 
 DEFAULT_CHECKPOINT = PROJECT_ROOT / "outputs" / "HalfUNet" / "models" / "halfunet_best.pth"
 DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "outputs" / "inference"
@@ -62,6 +67,7 @@ class InferenceResult:
     solar_probabilities: np.ndarray
     component_stats: Optional[ComponentStatistics] = None
     pixel_area_metrics: Optional[Dict[str, Any]] = None
+    processing_strategy: str = "direct"
 
     @property
     def image_width(self) -> int:
@@ -151,6 +157,8 @@ def predict_image(
     device: Optional[torch.device] = None,
     threshold: float = 0.5,
     min_component_area: int = 20,
+    strategy: str = "auto",
+    tiling_config: Optional[TilingConfig] = None,
 ) -> InferenceResult:
     """
     Executes the end-to-end Half U-Net segmentation pipeline on an input image.
@@ -163,6 +171,15 @@ def predict_image(
         device: Execution device (CUDA/CPU).
         threshold: Foreground class probability threshold (default 0.5).
         min_component_area: Minimum pixel area threshold for connected solar regions (default 20).
+        strategy: Inference strategy:
+            - 'auto' (default):
+                * (256, 256) -> direct forward pass (exact benchmark preservation).
+                * (orig_w == orig_h and orig_w <= 640) -> direct forward pass.
+                * Non-square or high-resolution (max(w,h) > 640) -> 'tiled' if max(w,h) > 640, else 'letterbox'.
+            - 'letterbox': Aspect-ratio preserving resize and border padding to 256x256.
+            - 'tiled': Overlapping 256x256 window inference with 2D Hann blending.
+            - 'direct': Legacy direct resize to 256x256.
+        tiling_config: Optional TilingConfig configuration for tiled inference.
 
     Returns:
         InferenceResult containing metrics, output paths, and predictions.
@@ -188,31 +205,70 @@ def predict_image(
     # 2. Image Loading and Validation
     original_image, (orig_w, orig_h) = load_and_validate_image(img_path)
 
-    # 3. Preprocessing (Resize to 256x256 -> ToTensor -> Batch dimension)
-    input_tensor = preprocess_image(original_image, device=device)
+    # Resolve strategy
+    active_strategy = strategy.lower().strip()
+    if active_strategy == "auto":
+        if (orig_w, orig_h) == (256, 256):
+            active_strategy = "direct"
+        elif orig_w == orig_h and orig_w <= 640:
+            active_strategy = "direct"
+        elif max(orig_w, orig_h) > 640:
+            active_strategy = "tiled"
+        else:
+            active_strategy = "letterbox"
 
-    # 4. Model Forward Pass
     if device.type == "cuda":
         torch.cuda.synchronize()
     start_time = time.perf_counter()
 
-    with torch.no_grad():
-        logits = model(input_tensor)
+    # 3. Execution Branching
+    if active_strategy == "tiled":
+        cfg = tiling_config if tiling_config is not None else TilingConfig(threshold=threshold)
+        final_binary_mask, solar_prob, _ = predict_tiled(
+            image=original_image,
+            model=model,
+            device=device,
+            config=cfg,
+        )
+        input_size = cfg.tile_size
+
+    elif active_strategy == "letterbox":
+        input_tensor, lb_params = preprocess_image_letterbox(
+            original_image,
+            device=device,
+            target_size=MODEL_INPUT_SIZE,
+        )
+        with torch.no_grad():
+            logits = model(input_tensor)
+        lb_mask_256, solar_prob_256 = process_logits(logits, threshold=threshold)
+        final_binary_mask = unpad_and_restore_mask(lb_mask_256, lb_params)
+        solar_prob = unpad_and_restore_probability_map(solar_prob_256, lb_params)
+        input_size = MODEL_INPUT_SIZE
+
+    elif active_strategy == "direct":
+        input_tensor = preprocess_image(original_image, device=device)
+        with torch.no_grad():
+            logits = model(input_tensor)
+        mask_256, solar_prob_256 = process_logits(logits, threshold=threshold)
+        final_binary_mask = resize_mask_to_original(mask_256, (orig_w, orig_h))
+        solar_prob = resize_probability_map_to_original(solar_prob_256, (orig_w, orig_h))
+        input_size = MODEL_INPUT_SIZE
+
+    else:
+        raise ValueError(
+            f"Unknown inference strategy '{strategy}'. Supported: 'auto', 'tiled', 'letterbox', 'direct'."
+        )
 
     if device.type == "cuda":
         torch.cuda.synchronize()
     elapsed_ms = (time.perf_counter() - start_time) * 1000.0
 
-    # 5. Postprocessing (Softmax -> Probabilities -> Binary Mask -> Resize to Original)
-    mask_256, solar_prob = process_logits(logits, threshold=threshold)
-    final_binary_mask = resize_mask_to_original(mask_256, (orig_w, orig_h))
-
-    # 6. Direct Derived Metrics (Strictly Pixel-Based)
+    # 4. Direct Derived Metrics (Strictly Pixel-Based)
     solar_pixels = int(np.count_nonzero(final_binary_mask == 1))
     total_pixels = int(orig_w * orig_h)
     coverage_percent = (solar_pixels / total_pixels) * 100.0 if total_pixels > 0 else 0.0
 
-    # 7. Standardized Pixel-Based Solar Area Measurement & Connected Region Analysis
+    # 5. Standardized Pixel-Based Solar Area Measurement & Connected Region Analysis
     pixel_area_metrics = compute_pixel_area_metrics(
         final_binary_mask,
         min_component_area=min_component_area,
@@ -224,7 +280,7 @@ def predict_image(
         connectivity=8,
     )
 
-    # 8. Generate and Save Visual Artifacts
+    # 6. Generate and Save Visual Artifacts
     stem = img_path.stem
     mask_file = masks_dir / f"{stem}_mask.png"
     overlay_file = overlays_dir / f"{stem}_overlay.png"
@@ -240,7 +296,7 @@ def predict_image(
         original_size=(orig_w, orig_h),
         model_name="Half U-Net",
         device=str(device),
-        input_size=MODEL_INPUT_SIZE,
+        input_size=input_size,
         solar_pixels=solar_pixels,
         total_pixels=total_pixels,
         solar_coverage_percent=coverage_percent,
@@ -251,6 +307,7 @@ def predict_image(
         solar_probabilities=solar_prob,
         component_stats=component_stats,
         pixel_area_metrics=pixel_area_metrics,
+        processing_strategy=active_strategy,
     )
 
 
@@ -265,6 +322,7 @@ def print_summary(result: InferenceResult) -> None:
     print(f"Original Size:    {orig_w}x{orig_h}")
     print(f"Model:            {result.model_name}")
     print(f"Device:           {result.device}")
+    print(f"Strategy:         {result.processing_strategy}")
     print(f"Input Size:       {in_w}x{in_h}")
     print(f"Solar Pixels:     {result.solar_pixels:,} / {result.total_pixels:,}")
     print(f"Solar Coverage:   {result.solar_coverage_percent:.4f}% (pixel coverage)")
@@ -322,6 +380,13 @@ def main() -> None:
         default=20,
         help="Minimum pixel area threshold for connected solar regions (default: 20)",
     )
+    parser.add_argument(
+        "--strategy",
+        type=str,
+        default="auto",
+        choices=["auto", "letterbox", "tiled", "direct"],
+        help="Inference strategy: 'auto', 'letterbox', 'tiled', or 'direct' (default: auto)",
+    )
 
     args = parser.parse_args()
 
@@ -333,6 +398,7 @@ def main() -> None:
             device=get_device(args.device) if args.device else None,
             threshold=args.threshold,
             min_component_area=args.min_component_area,
+            strategy=args.strategy,
         )
         print_summary(result)
     except Exception as exc:
@@ -342,4 +408,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

@@ -119,8 +119,8 @@ class GeospatialCatalog:
         Examples: '768.0_1.0.png' -> 768, '0960_1.png' -> 960, '100.0_1.0.png' -> 100.
         """
         clean_name = Path(filename).name
-        # Match pattern <sampleid>[.0]_1[.0].png
-        m = re.match(r"^(\d+)(?:\.0)?_1(?:\.0)?\.(?:png|jpg|jpeg)$", clean_name, re.IGNORECASE)
+        # Match pattern <sampleid>[.0]_1[.0][_benchmark].png
+        m = re.match(r"^(\d+)(?:\.0)?_1(?:\.0)?(?:_benchmark)?\.(?:png|jpg|jpeg)$", clean_name, re.IGNORECASE)
         if m:
             return int(m.group(1))
 

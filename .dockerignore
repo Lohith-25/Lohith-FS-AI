@@ -1,0 +1,100 @@
+# ==============================================================================
+# SolarMap-India — Docker Build Ignore Configuration (.dockerignore)
+# ==============================================================================
+
+# Version control
+.git
+.gitignore
+
+# Environment and secrets (Strict: never leak local credentials into images)
+.env
+.env.*
+*.key
+*.pem
+*.cert
+
+# Python build artifacts and caches
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+
+# Jupyter Notebooks and checkpoints
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/*
+*.ipynb
+
+# Testing & Coverage artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node / Frontend development directories
+node_modules/
+frontend/node_modules/
+frontend/dist/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Datasets (Prevent copying gigabytes of raw satellite imagery)
+dataset/
+external_datasets/
+*.zip
+*.tar
+*.tar.gz
+*.7z
+
+# Large experimental model directories not required for production Half U-Net
+checkpoints/
+outputs/analytics/
+outputs/confidence/
+outputs/energy/
+outputs/environmental/
+outputs/experiments/
+outputs/external_data/
+outputs/geospatial/
+outputs/inference/
+outputs/validation/
+outputs/DenseNet/
+outputs/FCN/
+outputs/PSPNet/
+outputs/UNet/
+results/
+test_images/
+
+# Runtime generated uploads and masks
+backend/uploads/*
+backend/generated/*
+uploads/
+generated/
+
+# Log files
+*.log
+
+# OS temporary files
+.DS_Store
+Thumbs.db
+ehthumbs.db

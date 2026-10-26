@@ -10,3 +10,5 @@ fastapi>=0.100.0
 uvicorn>=0.22.0
 python-multipart>=0.0.6
 httpx>=0.24.0
+pymongo>=4.5.0
+motor>=3.3.0

@@ -263,6 +263,203 @@ class TestSolarMapAPI(unittest.TestCase):
             self.assertFalse(data["success"])
             self.assertIn("unavailable", data["error"].lower())
 
+    def test_11_predict_multiple_supported_formats(self):
+        """Test POST /predict accepts and processes JPEG, TIFF, BMP, and WebP images."""
+        formats = [
+            ("JPEG", "jpg", "image/jpeg"),
+            ("TIFF", "tif", "image/tiff"),
+            ("TIFF", "tiff", "image/tiff"),
+            ("BMP", "bmp", "image/bmp"),
+            ("WEBP", "webp", "image/webp"),
+        ]
+        for pil_fmt, ext, mime in formats:
+            img = Image.new("RGB", (100, 100), color=(150, 180, 210))
+            buf = io.BytesIO()
+            img.save(buf, format=pil_fmt)
+            raw_bytes = buf.getvalue()
+
+            res = self.client.post(
+                "/predict",
+                files={"file": (f"format_test.{ext}", raw_bytes, mime)},
+            )
+            self.assertEqual(
+                res.status_code,
+                200,
+                f"Failed for format {pil_fmt} (.{ext}): {res.text}",
+            )
+            data = res.json()
+            self.assertTrue(data["success"])
+            self.assertEqual(data["image_width"], 100)
+            self.assertEqual(data["image_height"], 100)
+
+    def test_12_predict_parameter_validation(self):
+        """Test POST /predict query parameter boundary constraints."""
+        img_bytes = self._create_synthetic_image_bytes(width=64, height=64)
+
+        # Threshold > 1.0
+        res_high = self.client.post(
+            "/predict?threshold=1.2",
+            files={"file": ("test.png", img_bytes, "image/png")},
+        )
+        self.assertEqual(res_high.status_code, 422)
+
+        # Threshold < 0.0
+        res_low = self.client.post(
+            "/predict?threshold=-0.1",
+            files={"file": ("test.png", img_bytes, "image/png")},
+        )
+        self.assertEqual(res_low.status_code, 422)
+
+        # Min component area < 1
+        res_zero_area = self.client.post(
+            "/predict?min_component_area=0",
+            files={"file": ("test.png", img_bytes, "image/png")},
+        )
+        self.assertEqual(res_zero_area.status_code, 422)
+
+    def test_13_predict_file_size_limit_rejection(self):
+        """Test POST /predict returns 413 when file exceeds configured limit."""
+        img_bytes = self._create_synthetic_image_bytes(width=64, height=64)
+        with patch("backend.routes.predict.MAX_FILE_SIZE_BYTES", 50):
+            res_too_large = self.client.post(
+                "/predict",
+                files={"file": ("oversized.png", img_bytes, "image/png")},
+            )
+            self.assertEqual(res_too_large.status_code, 413)
+            self.assertIn("exceeds limit", res_too_large.json()["error"].lower())
+
+    def test_14_predict_threshold_effect(self):
+        """Test that changing probability threshold modifies segmentation pixel count."""
+        self.assertTrue(REAL_SAMPLE_IMAGE.is_file(), f"Sample image missing: {REAL_SAMPLE_IMAGE}")
+        with open(REAL_SAMPLE_IMAGE, "rb") as fp:
+            file_bytes = fp.read()
+
+        # Lower threshold -> more permissive
+        res_low = self.client.post(
+            "/predict?threshold=0.2",
+            files={"file": ("sample.png", file_bytes, "image/png")},
+        )
+        self.assertEqual(res_low.status_code, 200)
+        low_solar_px = res_low.json()["solar_area_pixels"]
+
+        # Higher threshold -> more conservative
+        res_high = self.client.post(
+            "/predict?threshold=0.8",
+            files={"file": ("sample.png", file_bytes, "image/png")},
+        )
+        self.assertEqual(res_high.status_code, 200)
+        high_solar_px = res_high.json()["solar_area_pixels"]
+
+        # Permissive threshold must yield greater or equal solar pixels than conservative threshold
+        self.assertGreaterEqual(
+            low_solar_px,
+            high_solar_px,
+            f"Expected threshold 0.2 ({low_solar_px} px) >= threshold 0.8 ({high_solar_px} px)",
+        )
+
+    def test_15_predict_geospatial_metadata(self):
+        """Test POST /predict includes Level B coordinates for benchmark image and unreferenced for synthetic."""
+        # 1. Synthetic image should be UNREFERENCED with None coordinates
+        synthetic_bytes = self._create_synthetic_image_bytes(width=64, height=64)
+        res_syn = self.client.post(
+            "/predict",
+            files={"file": ("unknown_rooftop.png", synthetic_bytes, "image/png")},
+        )
+        self.assertEqual(res_syn.status_code, 200)
+        syn_data = res_syn.json()
+        self.assertEqual(syn_data["georeferencing_level"], "UNREFERENCED")
+        self.assertIsNone(syn_data["latitude"])
+        self.assertIsNone(syn_data["longitude"])
+
+        # 2. Benchmark catalog image (768.0_1.0.png) should return Level B coordinates
+        self.assertTrue(REAL_SAMPLE_IMAGE.is_file())
+        with open(REAL_SAMPLE_IMAGE, "rb") as fp:
+            file_bytes = fp.read()
+
+        res_cat = self.client.post(
+            "/predict",
+            files={"file": ("768.0_1.0.png", file_bytes, "image/png")},
+        )
+        self.assertEqual(res_cat.status_code, 200)
+        cat_data = res_cat.json()
+        self.assertEqual(cat_data["georeferencing_level"], "LEVEL_B")
+        self.assertIsNotNone(cat_data["latitude"])
+        self.assertIsNotNone(cat_data["longitude"])
+        self.assertAlmostEqual(cat_data["latitude"], 21.197148, places=4)
+        self.assertAlmostEqual(cat_data["longitude"], 72.780643, places=4)
+        self.assertEqual(cat_data["location_name"], "Surat, Gujarat, India")
+
+    def test_16_original_image_artifact_retrieval(self):
+        """Test GET /outputs/{id}/original retrieves the exact uploaded original raster."""
+        img_bytes = self._create_synthetic_image_bytes(width=160, height=90)
+        predict_res = self.client.post(
+            "/predict",
+            files={"file": ("orig_test.png", img_bytes, "image/png")},
+        )
+        self.assertEqual(predict_res.status_code, 200)
+        data = predict_res.json()
+        orig_url = data.get("original_image_url")
+        self.assertIsNotNone(orig_url)
+        self.assertEqual(orig_url, f"/outputs/{data['prediction_id']}/original")
+
+        res = self.client.get(orig_url)
+        self.assertEqual(res.status_code, 200)
+        with Image.open(io.BytesIO(res.content)) as im:
+            self.assertEqual(im.size, (160, 90))
+
+    def test_17_representative_aspect_ratios_alignment(self):
+        """Test representative image aspect ratios (1:1, 4:3, 16:9, and 4:1 panorama) maintain strict dimensional and pixel alignment."""
+        test_dimensions = [
+            (200, 200),   # 1:1 Square
+            (400, 300),   # 4:3 Standard
+            (480, 270),   # 16:9 Widescreen
+            (600, 150),   # 4:1 Panoramic
+        ]
+
+        for w, h in test_dimensions:
+            with self.subTest(width=w, height=h):
+                img_bytes = self._create_synthetic_image_bytes(width=w, height=h)
+                res = self.client.post(
+                    "/predict",
+                    files={"file": (f"test_{w}x{h}.png", img_bytes, "image/png")},
+                )
+                self.assertEqual(res.status_code, 200)
+                data = res.json()
+
+                self.assertEqual(data["image_width"], w)
+                self.assertEqual(data["image_height"], h)
+
+                # Fetch mask and overlay
+                mask_res = self.client.get(data["mask_url"])
+                overlay_res = self.client.get(data["overlay_url"])
+                orig_res = self.client.get(data["original_image_url"])
+
+                self.assertEqual(mask_res.status_code, 200)
+                self.assertEqual(overlay_res.status_code, 200)
+                self.assertEqual(orig_res.status_code, 200)
+
+                with Image.open(io.BytesIO(mask_res.content)) as mask_img:
+                    self.assertEqual(mask_img.size, (w, h), f"Mask size mismatch for {w}x{h}")
+                    mask_arr = np.array(mask_img)
+
+                with Image.open(io.BytesIO(overlay_res.content)) as overlay_img:
+                    self.assertEqual(overlay_img.size, (w, h), f"Overlay size mismatch for {w}x{h}")
+                    overlay_arr = np.array(overlay_img.convert("RGB"))
+
+                with Image.open(io.BytesIO(orig_res.content)) as orig_img:
+                    self.assertEqual(orig_img.size, (w, h), f"Original size mismatch for {w}x{h}")
+                    orig_arr = np.array(orig_img.convert("RGB"))
+
+                # Mask pixel alignment with overlay highlight
+                diff = np.abs(overlay_arr.astype(int) - orig_arr.astype(int))
+                diff_pixels = int(np.count_nonzero(np.any(diff > 0, axis=-1)))
+                solar_pixels = int(np.count_nonzero(mask_arr == 255))
+                self.assertEqual(
+                    diff_pixels,
+                    solar_pixels,
+                    f"Overlay highlight pixels ({diff_pixels}) must match mask positive pixels ({solar_pixels}) for {w}x{h}",
+                )
+
 
 if __name__ == "__main__":
     unittest.main()

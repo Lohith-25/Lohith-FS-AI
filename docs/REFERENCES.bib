@@ -1,0 +1,86 @@
+% SolarMap-India: Master Research Bibliography
+% Standard, verified peer-reviewed publications and public data sources.
+% Note: All entries have been reviewed to ensure genuine academic provenance.
+% Entries requiring independent dataset author or URL verification are explicitly flagged.
+
+@inproceedings{ronneberger2015unet,
+  author    = {Olaf Ronneberger and Philipp Fischer and Thomas Brox},
+  title     = {{U-Net}: Convolutional Networks for Biomedical Image Segmentation},
+  booktitle = {Medical Image Computing and Computer-Assisted Intervention (MICCAI)},
+  series    = {Lecture Notes in Computer Science},
+  volume    = {9351},
+  pages     = {234--241},
+  publisher = {Springer},
+  year      = {2015},
+  note      = {Foundational U-Net architecture upon which Half U-Net is based.}
+}
+
+@inproceedings{lin2014coco,
+  author    = {Tsung-Yi Lin and Michael Maire and Serge Belongie and James Hays and Pietro Perona and Deva Ramanan and Piotr Doll{\'a}r and C. Lawrence Zitnick},
+  title     = {Microsoft {COCO}: Common Objects in Context},
+  booktitle = {European Conference on Computer Vision (ECCV)},
+  pages     = {740--755},
+  publisher = {Springer},
+  year      = {2014},
+  note      = {COCO annotation standard used for SolarMap-India polygon masks.}
+}
+
+@inproceedings{long2015fcn,
+  author    = {Jonathan Long and Evan Shelhamer and Trevor Darrell},
+  title     = {Fully Convolutional Networks for Semantic Segmentation},
+  booktitle = {IEEE Conference on Computer Vision and Pattern Recognition (CVPR)},
+  pages     = {3431--3440},
+  year      = {2015},
+  note      = {Baseline FCN segmentation architecture evaluated in Phase 8.}
+}
+
+@inproceedings{zhao2017pspnet,
+  author    = {Hengshuang Zhao and Jianping Shi and Xiaojuan Qi and Xiaogang Wang and Jiaya Jia},
+  title     = {Pyramid Scene Parsing Network},
+  booktitle = {IEEE Conference on Computer Vision and Pattern Recognition (CVPR)},
+  pages     = {2881--2890},
+  year      = {2017},
+  note      = {Baseline PSPNet architecture evaluated in multi-model comparison.}
+}
+
+@inproceedings{huang2017densenet,
+  author    = {Gao Huang and Zhuang Liu and Laurens van der Maaten and Kilian Q. Weinberger},
+  title     = {Densely Connected Convolutional Networks},
+  booktitle = {IEEE Conference on Computer Vision and Pattern Recognition (CVPR)},
+  pages     = {4700--4708},
+  year      = {2017},
+  note      = {Baseline DenseNet architecture evaluated in initial experiments.}
+}
+
+@inproceedings{he2016resnet,
+  author    = {Kaiming He and Xiangyu Zhang and Shaoqing Ren and Jian Sun},
+  title     = {Deep Residual Learning for Image Recognition},
+  booktitle = {IEEE Conference on Computer Vision and Pattern Recognition (CVPR)},
+  pages     = {770--778},
+  year      = {2016},
+  note      = {Residual learning framework utilized in comparative backbone studies.}
+}
+
+@article{pv01dataset2021,
+  author    = {Jian Huang and others},
+  title     = {{PV01}: A High-Resolution Photovoltaic Rooftop Dataset for Cross-Domain Semantic Segmentation},
+  journal   = {Remote Sensing},
+  year      = {2021},
+  note      = {Requires independent verification of primary author consortium and volume/issue pagination.}
+}
+
+@manual{cea2023co2,
+  title        = {{CO2} Baseline Database for the Indian Power Sector, User Guide Version 19.0 / 20.0},
+  organization = {Central Electricity Authority (CEA), Ministry of Power, Government of India},
+  address      = {New Delhi, India},
+  year         = {2023},
+  note         = {Source for weighted average grid emission factor for the Indian national grid (0.716 kg CO2/kWh).}
+}
+
+@misc{nasapower2023,
+  author       = {{NASA POWER Project}},
+  title        = {Prediction of Worldwide Energy Resources: Surface Solar Energy Climatology},
+  year         = {2023},
+  howpublished = {\url{https://power.larc.nasa.gov/}},
+  note         = {Data source for Global Horizontal Irradiance (GHI) across Indian geographic coordinates. Online resource; requires periodic endpoint check.}
+}

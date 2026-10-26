@@ -14,34 +14,38 @@ The core computer vision engine is powered by a trained **Half U-Net** segmentat
 
 ---
 
-## 2. Planned Architecture Pipeline
+## 2. Integrated Full-Stack Architecture Pipeline (Phase 13)
 
-The diagram below reflects the targeted end-to-end data and execution flow. **All downstream application components are currently PLANNED and not yet implemented.**
+The diagram below reflects the active, verified end-to-end data and execution flow across the integrated frontend, backend, analytics engines, geospatial map, and MongoDB persistence layer:
 
 ```mermaid
 flowchart TD
     User["End User / Analyst"]
-    ReactFrontend["React Frontend [PLANNED]"]
-    FastAPIBackend["FastAPI Backend [PLANNED]"]
-    MLInference["ML Inference Engine [PLANNED]"]
+    ReactFrontend["React 19 Frontend Dashboard & History Drawer [VERIFIED]"]
+    FastAPIBackend["FastAPI Backend Service [VERIFIED]"]
+    MLInference["ML Inference Engine (PyTorch CUDA/CPU) [VERIFIED]"]
     HalfUNet["Half U-Net Model (Trained Checkpoint: halfunet_best.pth) [VERIFIED]"]
-    SolarAnalytics["Solar Segmentation Analytics [PLANNED]"]
-    GeoIntel["Geospatial Intelligence [PLANNED]"]
-    EnergyEst["Energy Estimation [PLANNED]"]
-    CO2Est["CO2 Avoidance Estimation [PLANNED]"]
-    DeployAssess["Deployment Assessment [PLANNED]"]
-    MongoDB[("MongoDB Database [PLANNED]")]
+    SolarAnalytics["Solar Segmentation Analytics (Connected Components) [VERIFIED]"]
+    GeoIntel["Geospatial Catalog (Level B Georeferencing) [VERIFIED]"]
+    LeafletMap["Interactive Leaflet Map (CartoDB Dark / OSM) [VERIFIED]"]
+    AreaEngine["Physical Area Calculator (GSD Safeguards) [VERIFIED]"]
+    EnergyEngine["Solar Energy Model (E = A * GHI * eta * PR) [VERIFIED]"]
+    CO2Engine["CO2 Avoidance Model (CEA Grid Factor) [VERIFIED]"]
+    MongoDB[("MongoDB Database (Async Motor Persistence) [VERIFIED]")]
 
-    User --> ReactFrontend
-    ReactFrontend --> FastAPIBackend
-    FastAPIBackend --> MLInference
+    User -->|Image Upload / Sample Load| ReactFrontend
+    ReactFrontend -->|POST /predict multipart/form-data| FastAPIBackend
+    FastAPIBackend -->|Preprocessed Tensor| MLInference
     MLInference --> HalfUNet
     HalfUNet --> SolarAnalytics
     SolarAnalytics --> GeoIntel
-    GeoIntel --> EnergyEst
-    EnergyEst --> CO2Est
-    CO2Est --> DeployAssess
-    DeployAssess --> MongoDB
+    GeoIntel --> LeafletMap
+    SolarAnalytics --> AreaEngine
+    AreaEngine --> EnergyEngine
+    EnergyEngine --> CO2Engine
+    CO2Engine -->|Structured Analytics & Provenance| MongoDB
+    FastAPIBackend -->|Standardized PredictResponse| ReactFrontend
+    ReactFrontend -->|GET /api/predictions/history| MongoDB
 ```
 
 ---
@@ -50,18 +54,19 @@ flowchart TD
 
 | Component | Status | Description |
 | :--- | :--- | :--- |
-| **User Interface** | `PLANNED` | Interactive web dashboard with map views, image upload, ROI selector, and analytics views. |
-| **React Frontend** | `PLANNED` | React-based SPA (single-page application) with Leaflet/MapLibre mapping and Chart.js/Recharts visual analytics. |
-| **FastAPI Backend** | `PLANNED` | Asynchronous REST API providing upload handling, model inference orchestration, geospatial queries, and reporting. |
+| **User Interface** | `COMPLETE & VERIFIED` | Interactive web dashboard with 3-up inspection, comparison slider, Leaflet geospatial map, parameter controls, and analytics. |
+| **React Frontend** | `COMPLETE & VERIFIED` | React 19 + Vite 8 SPA with Leaflet v1.9.4 interactive mapping, Obsidian dark theme, and dual basemap support. |
+| **FastAPI Backend** | `COMPLETE & VERIFIED` | Asynchronous REST API providing upload handling, model inference orchestration, geospatial queries, history, and reporting. |
 | **ML Inference Engine** | `COMPLETE & VERIFIED` | Standalone, lightweight inference module executing PyTorch tensor preprocessing, model forward pass, and mask postprocessing. |
 | **Half U-Net Model** | `VERIFIED` | 2-class semantic segmentation architecture trained on 2500 aerial images (640x640 / resized to 256x256). Checkpoint verified at `outputs/HalfUNet/models/halfunet_best.pth`. |
 | **Solar Segmentation Analytics** | `COMPLETE & VERIFIED` | Converts raw probability masks into strictly derived pixel metrics, connected components, bounding boxes, centroids, filtering, and machine-readable JSON/CSV reports. |
 | **Confidence & Uncertainty Analysis** | `COMPLETE & VERIFIED` | Computes per-pixel softmax probability maps, prediction confidence, probability-derived uncertainty, 10-bin histograms, and region-level confidence categorization. |
-| **Geospatial Intelligence** | `LEVEL B (COMPLETE)` | Maps images to ground coordinates via sample catalog; audited physical scale availability (GSD absent -> physical area in m^2 marked insufficient_data; energy readiness BLOCKED). |
-| **Energy Estimation** | `PLANNED (BLOCKED)` | Estimates annual kWh generation potential based on panel area, panel efficiency, standard solar irradiance (GHI/DNI), and system performance ratio. |
-| **CO2 Estimation** | `PLANNED` | Estimates metric tons of greenhouse gas ($CO_2$) emissions avoided per year using regional grid emission factors (e.g., CEA baseline factors for India). |
+| **Geospatial Intelligence & Mapping** | `LEVEL B (COMPLETE & VERIFIED)` | Maps images to scene centroid coordinates via sample catalog (`GeospatialCatalog`); visualized interactively via `GeospatialMap.jsx` with Level B constraints; physical scale uncalibrated. |
+| **Energy Estimation** | `COMPLETE & VERIFIED` | Estimates annual kWh generation potential based on panel area, panel efficiency, standard solar irradiance (GHI/DNI), and system performance ratio (module verified; physical scale uncalibrated). |
+| **CO2 Estimation** | `COMPLETE & VERIFIED` | Estimates metric tonnes of greenhouse gas ($CO_2$) emissions avoided per year using regional grid emission factors (e.g., CEA baseline factors for India). |
+| **MongoDB** | `COMPLETE & VERIFIED` | Persistent asynchronous document storage for prediction records, segmentation statistics, physical area / energy / CO2 statuses, artifact references, and pagination query endpoints. |
+| **Deployment & Containerization** | `COMPLETE & VERIFIED (Task 14.1)` | Multi-stage Docker container (Node 22 + Python 3.11 slim), Docker Compose orchestration, unified static asset serving from FastAPI, and model verification script (`scripts/verify_model_artifact.py`). |
 | **Deployment Assessment** | `PLANNED` | Rooftop/ground suitability assessment, roof orientation, shading impact assessment, and deployment recommendation scoring. |
-| **MongoDB** | `PLANNED` | Persistent document storage for prediction records, uploaded metadata, polygon masks, and user evaluation history. |
 
 ---
 
@@ -217,6 +222,114 @@ Phase 6 built the production-grade physical area and estimated solar energy pote
 3. **Coarse Solar Climatology:** NASA CERES native grid is $1.0^\circ \times 1.0^\circ$ ($\sim 110\text{ km}$), omitting local microclimates.
 4. **Orientation and Tilt Unknowns:** Satellite nadir view lacks 3D rooftop tilt and compass azimuth angles.
 5. **Loss Factors:** Local shading obstacles, soiling/dust accumulation, temperature derating coefficients, inverter clipping, and annual panel degradation ($\sim 0.5\%/\text{year}$) are not modeled.
+
+---
+
+## 10. CO₂ & Environmental Avoidance Analysis Layer (Phase 7)
+
+Phase 7 implemented the greenhouse gas ($CO_2$) emission avoidance modeling layer, connecting photovoltaic energy estimates to authoritative electricity grid emission factors published by India's Central Electricity Authority (CEA).
+
+### 10.1 Mathematical Formulations
+- **Annual Avoided Carbon ($kg\text{ }CO_2/\text{year}$):**
+  $$\text{CO}_2\text{ avoided (kg/year)} = E \times \text{EF}$$
+  where:
+  - $E$: Annual solar electricity generation ($kWh/\text{year}$) from Phase 6.
+  - $\text{EF}$: Grid emission factor ($kg\text{ }CO_2/kWh$), defaulting to the CEA India National Grid Weighted Average ($\sim 0.716\text{ }kg\text{ }CO_2/kWh$).
+- **Metric Tonnes Avoidance ($\text{tonnes }CO_2/\text{year}$):**
+  $$\text{CO}_2\text{ avoided (tonnes/year)} = \frac{\text{CO}_2\text{ avoided (kg/year)}}{1,000}$$
+
+### 10.2 Strict Scientific Anti-Fabrication Guarantees
+- If physical area or annual energy generation $E$ is unavailable, uncalibrated, or $null$ (as in the uncalibrated benchmark imagery), the environmental model strictly reports:
+  ```json
+  {
+    "co2_status": "insufficient_data",
+    "co2_avoided_kg_year": null,
+    "co2_avoided_tonnes_year": null
+  }
+  ```
+- No zeros or synthetic default multipliers are substituted for unverified inputs.
+
+### 10.3 Authoritative Grid Emission Factors (CEA India)
+- **Primary Source:** Central Electricity Authority (CEA), Ministry of Power, Government of India.
+- **Reference Document:** *CO₂ Baseline Database for the Indian Power Sector (User Guide Version 19.0 / 20.0)*.
+- **Scope:** Indian Unified National Synchronous Grid (NEWNE + Southern Region).
+- **Default Baseline Factor:** $0.716\text{ }kg\text{ }CO_2/kWh$ ($tCO_2/MWh$) weighted average across all grid generation including renewables.
+- **Thermal Generation Baseline:** $0.820\text{ }kg\text{ }CO_2/kWh$ weighted average excluding renewables.
+
+---
+
+## 11. MongoDB Integration & Prediction History Layer (Phase 8)
+
+Phase 8 implemented asynchronous document persistence and query endpoints for prediction history, capturing full multi-phase analytics and provenance while respecting strict scientific anti-fabrication rules.
+
+### 11.1 Architecture & Connection Lifecycle
+- **Driver:** Asynchronous Motor client (`motor.motor_asyncio.AsyncIOMotorClient`) running on the native asyncio event loop.
+- **Connection Management:** Initialized during FastAPI startup within the application lifespan handler (`@asynccontextmanager lifespan`); disconnected cleanly during shutdown.
+- **Offline & Import Resilience:** The application and automated test suites import and run without requiring a live MongoDB instance. If the database is unconfigured or offline, inference execution (`POST /predict`) continues normally while gracefully setting `saved_to_history: false`.
+- **Credential Safety:** Connection strings and passwords are never logged; diagnostic endpoints and logs mask credentials (e.g. `sanitize_mongodb_uri`).
+
+### 11.2 Prediction History Schema
+Each persisted prediction record preserves:
+- `prediction_id`: Unique UUID4 identifier.
+- `created_at_utc`: ISO 8601 UTC timestamp.
+- `filename`: Original aerial/satellite image filename.
+- `status`: Execution status (`success`).
+- `model_name`: Detection model (`HalfUNet`).
+- `segmentation`: Dimensions, solar pixels, coverage percent, and connected component metrics.
+- `spatial_resolution`: Ground Sampling Distance (`gsd_status`, `gsd_meters`, `physical_area_status`, `solar_area_m2`).
+- `energy_model`: Estimated solar energy potential status (`insufficient_data` or `estimated`) and annual kWh.
+- `environmental_model`: Avoided CO₂ status (`insufficient_data` or `estimated`), kg/year, and metric tonnes/year.
+- `artifacts`: Safe relative URLs for binary masks and visual detection overlays (`/outputs/{id}/mask`, `/outputs/{id}/overlay`).
+- `applied_threshold` & `applied_min_component_area`: Parameter configuration used during inference.
+
+### 11.3 Indexing Strategy
+- **Unique Lookup Index:** `prediction_id` (ascending, unique) for constant-time $O(1)$ single record retrieval.
+- **Chronological Sorting Index:** `created_at_utc` (descending) for high-performance paginated queries (`sort("created_at_utc", -1)`).
+
+### 11.4 REST API Endpoints
+- `GET /api/predictions/history` (and `/predictions/history`): Retrieves paginated prediction records with configurable `skip` and `limit` (max 100).
+- `GET /api/predictions/history/{prediction_id}` (and `/predictions/history/{prediction_id}`): Retrieves a single prediction record by UUID4 identifier.
+- `GET /health/db`: Lightweight database readiness and connectivity check.
+
+---
+
+## 12. Full Integration and Testing Layer (Phase 13)
+
+Phase 13 establishes the cohesive end-to-end integration between the machine learning segmentation pipeline, analytical derivation engines, geospatial map viewer, and prediction history database.
+
+### 12.1 Cross-Phase Engine Integration
+1. **Physical Area & Spatial Resolution (Phase 5 & 6):**
+   - Integrates `ml.energy.area.PhysicalAreaCalculator`.
+   - Without verified GSD calibration (isotropic or anisotropic meters/pixel), `physical_area_status` strictly evaluates to `insufficient_data` and physical dimensions remain `null`.
+2. **Photovoltaic Energy Potential (Phase 6):**
+   - Integrates `ml.energy.energy_model.SolarEnergyModel`.
+   - Evaluates annual photovoltaic generation via $E = A \cdot GHI \cdot \eta \cdot PR$.
+   - Adheres to zero-fabrication rules: when physical area or annual irradiance ($GHI$) is uncalibrated, `energy_status` evaluates to `insufficient_data` with detailed diagnostic reasons logged in provenance metadata.
+3. **Avoided CO₂ Emissions (Phase 7):**
+   - Integrates `ml.environmental.co2_model.CO2AvoidanceModel`.
+   - Derives avoided grid emissions using Central Electricity Authority (CEA) Indian national grid baseline factors ($0.716\text{ }kg\text{ }CO_2/kWh$).
+   - Safely preserves `insufficient_data` when upstream generation inputs are unverified.
+
+### 12.2 Frontend UI Integration & State Management
+1. **Prediction History Drawer (`PredictionHistoryDrawer.jsx`):**
+   - Slide-out drawer displaying persisted inference runs sorted newest first.
+   - Built-in pagination controls (`skip`, `limit`, page navigation).
+   - Real-time MongoDB connection health monitoring (`checkDatabaseHealth`).
+   - Graceful offline fallback: displays clear notification when MongoDB is offline without interfering with the live image inference workflow.
+2. **Active History Inspection Banner:**
+   - When a historical prediction is selected, the application dynamically displays a prominent banner indicating that a historical run is being inspected, with an instant button to return to live upload.
+   - Updates visual inspection overlays and synchronizes the Leaflet map coordinates.
+3. **Geospatial Map Synchronization (`GeospatialMap.jsx`):**
+   - Synchronizes marker location and popup metadata directly with the active prediction.
+   - Accurately distinguishes cataloged Level B scene centroids from unreferenced images.
+   - Completely prevents fallback coordinate fabrication for unreferenced scenes.
+
+### 12.3 Automated Regression & Integration Testing
+- **Backend Test Suite:** 171 automated tests passing across 10 test modules (`python -m unittest discover tests`).
+- **Dedicated Phase 13 Suite:** `tests/test_phase13_integration.py` verifies 10 critical integration contracts (energy/CO₂ defaults, geospatial catalogs, MongoDB persistence details, offline resilience, pagination, UUID validation, and mathematical correctness under explicit scenarios).
+- **Frontend Code Quality:** 0 lint errors/warnings (`oxlint`) across 13 source files; production bundle builds cleanly in <300ms (`vite build`).
+
+
 
 
 

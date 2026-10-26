@@ -1,0 +1,91 @@
+# ==============================================================================
+# SolarMap-India — Docker Compose Orchestration (docker-compose.yml)
+# ==============================================================================
+# Provides production application container and an optional local MongoDB service.
+#
+# Usage:
+#   Start all services:          docker compose up -d --build
+#   Start app only (no DB):      docker compose up -d --build solarmap-app
+#   Check container status:      docker compose ps
+#   Inspect app logs:            docker compose logs -f solarmap-app
+#   Stop all services:           docker compose down
+# ==============================================================================
+
+services:
+  solarmap-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: solarmap-india-app
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8000
+      - ENVIRONMENT=production
+      - MODEL_PATH=/app/outputs/HalfUNet/models/halfunet_best.pth
+      - FRONTEND_DIST_DIR=/app/frontend/dist
+      - CORS_ORIGINS=*
+      # Database Configuration Options:
+      # Option A (Default): Database Unconfigured / Offline mode. Leave MONGODB_URI empty.
+      # Option B (Local Compose DB): Set MONGODB_URI=mongodb://mongodb:27017/solarmap_india
+      # Option C (MongoDB Atlas): Set MONGODB_URI in your .env to your atlas connection string
+      - MONGODB_URI=${MONGODB_URI:-}
+      - MONGODB_DATABASE=${MONGODB_DATABASE:-solarmap_india}
+      - MONGODB_COLLECTION=${MONGODB_COLLECTION:-predictions}
+    volumes:
+      # Model Artifact Mount:
+      # Mounts the local trained Half U-Net checkpoint into the container without baking weights into git
+      - ./outputs/HalfUNet/models:/app/outputs/HalfUNet/models:ro
+      # Storage persistence for image uploads and output overlays
+      - solarmap-uploads:/app/backend/uploads
+      - solarmap-generated:/app/backend/generated
+    depends_on:
+      mongodb:
+        condition: service_healthy
+        required: false
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    networks:
+      - solarmap-network
+
+  # Optional local MongoDB service for prediction history persistence
+  # If using MongoDB Atlas or running in database-unconfigured mode, this service is optional
+  mongodb:
+    image: mongo:7.0-jammy
+    container_name: solarmap-india-mongodb
+    restart: unless-stopped
+    environment:
+      - MONGO_INITDB_DATABASE=solarmap_india
+    volumes:
+      - solarmap-mongodb-data:/data/db
+    networks:
+      - solarmap-network
+    # Security: Do not expose port 27017 to the public network by default.
+    # The application service communicates with MongoDB via the internal Docker bridge network.
+    # Uncomment only for local database management tools (e.g. MongoDB Compass on localhost):
+    # ports:
+    #   - "127.0.0.1:27017:27017"
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  solarmap-mongodb-data:
+    driver: local
+  solarmap-uploads:
+    driver: local
+  solarmap-generated:
+    driver: local
+
+networks:
+  solarmap-network:
+    driver: bridge

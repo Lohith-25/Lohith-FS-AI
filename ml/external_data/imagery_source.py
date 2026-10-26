@@ -74,9 +74,10 @@ def inspect_imagery_source(project_root: Optional[Path] = None) -> ImagerySource
     else:
         evidence.append("COCO annotation file not found.")
 
-    # 3. Check for world files (.tfw, .pgw) and georeferenced rasters (.tif)
-    tfw_files = list(root.glob("**/*.tfw")) + list(root.glob("**/*.pgw"))
-    tif_files = list(root.glob("**/*.tif")) + list(root.glob("**/*.geotiff"))
+    # 3. Check for world files (.tfw, .pgw) and georeferenced rasters (.tif) in dataset
+    dataset_dir = root / "dataset"
+    tfw_files = list(dataset_dir.glob("**/*.tfw")) + list(dataset_dir.glob("**/*.pgw"))
+    tif_files = list(dataset_dir.glob("**/*.tif")) + list(dataset_dir.glob("**/*.geotiff"))
     has_world = len(tfw_files) > 0
     has_geotiff = len(tif_files) > 0
     if not has_world:
